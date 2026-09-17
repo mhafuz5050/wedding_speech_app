@@ -51,9 +51,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  await captureServerEvent(userId, "email_captured", { speechType: speechTypeSlug });
-
-  const usage = await checkUsageLimit({ userId, ipHash });
+  // Independent of each other — the usage check doesn't depend on the
+  // analytics capture completing first.
+  const [usage] = await Promise.all([
+    checkUsageLimit({ userId, ipHash }),
+    captureServerEvent(userId, "email_captured", { speechType: speechTypeSlug }),
+  ]);
   if (!usage.allowed) {
     const message =
       usage.reason === "email"
@@ -98,18 +101,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  await admin.from("generation_logs").insert({
-    speech_id: speech.id,
-    input_tokens: result.inputTokens,
-    output_tokens: result.outputTokens,
-  });
-
-  await recordUsage({ userId, ipHash });
-
-  await captureServerEvent(userId, "speech_generated", {
-    speechId: speech.id,
-    speechType: speechTypeSlug,
-  });
+  // All three are independent side effects once the speech row exists.
+  await Promise.all([
+    admin.from("generation_logs").insert({
+      speech_id: speech.id,
+      input_tokens: result.inputTokens,
+      output_tokens: result.outputTokens,
+    }),
+    recordUsage({ userId, ipHash }),
+    captureServerEvent(userId, "speech_generated", {
+      speechId: speech.id,
+      speechType: speechTypeSlug,
+    }),
+  ]);
 
   return NextResponse.json({ speechId: speech.id, sections: result.sections });
 }

@@ -79,18 +79,21 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     return;
   }
 
-  await sendReceiptEmail({
-    speechId,
-    userId,
-    plan,
-    amountPence: session.amount_total ?? 0,
-    currency: session.currency ?? "gbp",
-  });
-
-  await captureServerEvent(userId, "payment_completed", {
-    speechId,
-    plan,
-    amountPence: session.amount_total ?? 0,
-    currency: session.currency ?? "gbp",
-  });
+  // Independent of each other — run concurrently rather than adding
+  // their latencies together before Stripe gets its response.
+  await Promise.all([
+    sendReceiptEmail({
+      speechId,
+      userId,
+      plan,
+      amountPence: session.amount_total ?? 0,
+      currency: session.currency ?? "gbp",
+    }),
+    captureServerEvent(userId, "payment_completed", {
+      speechId,
+      plan,
+      amountPence: session.amount_total ?? 0,
+      currency: session.currency ?? "gbp",
+    }),
+  ]);
 }

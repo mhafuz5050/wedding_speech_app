@@ -92,18 +92,19 @@ export async function POST(
     );
   }
 
-  await admin.from("generation_logs").insert({
-    speech_id: id,
-    input_tokens: result.inputTokens,
-    output_tokens: result.outputTokens,
-  });
-
-  await captureServerEvent(speech.user_id, "revision_used", {
-    speechId: id,
-    sectionId,
-    plan: speech.plan,
-    revisionsUsed,
-  });
+  await Promise.all([
+    admin.from("generation_logs").insert({
+      speech_id: id,
+      input_tokens: result.inputTokens,
+      output_tokens: result.outputTokens,
+    }),
+    captureServerEvent(speech.user_id, "revision_used", {
+      speechId: id,
+      sectionId,
+      plan: speech.plan,
+      revisionsUsed,
+    }),
+  ]);
 
   return NextResponse.json({
     section: sections[index],
