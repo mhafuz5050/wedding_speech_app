@@ -10,12 +10,21 @@ import { PaywallPanel } from "@/components/speech/PaywallPanel";
 
 const sectionsSchema = z.array(speechSectionSchema);
 
+const CHECKOUT_ERROR_MESSAGES: Record<string, string> = {
+  invalid_request: "Something went wrong with that request. Please try again.",
+  consent_required: "Please agree to the consent checkbox before continuing to payment.",
+  checkout_unavailable: "Payment isn't available right now. Please try again shortly.",
+};
+
 export default async function SpeechPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const { id } = await params;
+  const { error } = await searchParams;
   const admin = createSupabaseAdminClient();
 
   const { data: speech } = await admin
@@ -66,7 +75,16 @@ export default async function SpeechPage({
         ))}
       </div>
 
-      {!isPaid && <PaywallPanel />}
+      {!isPaid && error && CHECKOUT_ERROR_MESSAGES[error] && (
+        <p
+          role="alert"
+          className="w-full max-w-md rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+        >
+          {CHECKOUT_ERROR_MESSAGES[error]}
+        </p>
+      )}
+
+      {!isPaid && <PaywallPanel speechId={id} />}
     </main>
   );
 }

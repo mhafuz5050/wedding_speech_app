@@ -1,10 +1,23 @@
 import { PRICING } from "@/lib/config";
 
-const plans = [PRICING.standard, PRICING.premium];
+const plans = [
+  { key: "standard", ...PRICING.standard },
+  { key: "premium", ...PRICING.premium },
+] as const;
 
-export function PaywallPanel() {
+interface PaywallPanelProps {
+  speechId: string;
+}
+
+export function PaywallPanel({ speechId }: PaywallPanelProps) {
   return (
-    <section className="flex w-full max-w-md flex-col gap-6 rounded-2xl border border-rose-200 bg-rose-50 p-6">
+    <form
+      action="/api/checkout"
+      method="POST"
+      className="flex w-full max-w-md flex-col gap-6 rounded-2xl border border-rose-200 bg-rose-50 p-6"
+    >
+      <input type="hidden" name="speechId" value={speechId} />
+
       <div className="text-center">
         <h2 className="text-lg font-bold text-zinc-900">
           Unlock your full speech
@@ -17,7 +30,7 @@ export function PaywallPanel() {
       <div className="flex flex-col gap-4">
         {plans.map((plan) => (
           <div
-            key={plan.label}
+            key={plan.key}
             className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-5"
           >
             <div>
@@ -39,16 +52,30 @@ export function PaywallPanel() {
               ))}
             </ul>
             <button
-              type="button"
-              disabled
-              title="Payments are wired up in the next milestone"
-              className="rounded-xl bg-rose-600 px-5 py-3 text-base font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+              type="submit"
+              name="plan"
+              value={plan.key}
+              className="rounded-xl bg-rose-600 px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-rose-700"
             >
               Unlock for £{plan.price}
             </button>
           </div>
         ))}
       </div>
-    </section>
+
+      <label className="flex items-start gap-3 text-sm text-zinc-700">
+        <input
+          type="checkbox"
+          name="consent"
+          required
+          className="mt-1 h-4 w-4 accent-rose-600"
+        />
+        <span>
+          I agree to get immediate access to this digital content, and
+          understand this means I give up my 14-day right to cancel once
+          my speech is unlocked.
+        </span>
+      </label>
+    </form>
   );
 }
