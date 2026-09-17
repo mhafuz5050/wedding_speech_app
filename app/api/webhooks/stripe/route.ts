@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import type Stripe from "stripe";
 import { createStripeClient } from "@/lib/stripe/client";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { sendReceiptEmail } from "@/lib/emails/sendReceiptEmail";
 
 export async function POST(request: NextRequest) {
   const signature = request.headers.get("stripe-signature");
@@ -74,5 +75,14 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   if (updateError) {
     console.error("Failed to mark speech as paid", updateError);
+    return;
   }
+
+  await sendReceiptEmail({
+    speechId,
+    userId,
+    plan,
+    amountPence: session.amount_total ?? 0,
+    currency: session.currency ?? "gbp",
+  });
 }

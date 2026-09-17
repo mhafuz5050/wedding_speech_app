@@ -17,10 +17,9 @@ Open [http://localhost:3000](http://localhost:3000).
 
 1. Create a free project at [supabase.com](https://supabase.com).
 2. In the SQL editor, run every file in `supabase/migrations/` in order
-   (`0001_waitlist.sql` through `0004_unlocked_extras.sql`). This creates
-   the `waitlist`, `profiles`, `speeches`, `usage_limits`,
-   `generation_logs`, and `payments` tables, all with row level security
-   enabled.
+   (`0001_waitlist.sql` through `0005_emails.sql`). This creates the
+   `waitlist`, `profiles`, `speeches`, `usage_limits`, `generation_logs`,
+   and `payments` tables, all with row level security enabled.
 3. In your Supabase project settings (API section), copy these into
    `.env.local`:
    ```
@@ -95,6 +94,39 @@ actually work:
 2. Visit `/account`, enter an email, and check that inbox for the
    sign-in link — clicking it should land you back on `/account` with
    your speeches listed.
+
+## Emails (Milestone 7)
+
+Two emails, both via Resend:
+
+- **Payment receipt** — sent once, automatically, right after the Stripe
+  webhook marks a speech paid. Nothing to trigger manually.
+- **Follow-up** — sent to anyone whose speech is 24+ hours old and still
+  unpaid, via a scheduled job (`app/api/cron/follow-up-emails`, wired up
+  in `vercel.json` to run hourly once deployed to Vercel). Carries an
+  unsubscribe link; the receipt doesn't, since it's transactional.
+
+Setup:
+
+1. Add to `.env.local`:
+   ```
+   RESEND_API_KEY=
+   ```
+2. Update `EMAIL_FROM` in `lib/config.ts` to an address on a domain
+   you've verified in the [Resend dashboard](https://resend.com/domains)
+   — sending will fail with the placeholder address otherwise.
+3. Set `CRON_SECRET` (any random string) in `.env.local` **and** in your
+   Vercel project's environment variables once deployed — Vercel sends
+   it automatically as `Authorization: Bearer $CRON_SECRET` on every
+   Cron Job request, and the route refuses anything else. This variable
+   isn't in `CLAUDE.md`'s env var list; it's a necessary addition for
+   authenticating the cron job specifically.
+4. To test the follow-up locally without waiting 24 hours, backdate a
+   test row's `created_at` in the Supabase table editor to 25+ hours
+   ago, then call the route yourself:
+   ```bash
+   curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/follow-up-emails
+   ```
 
 ## Scripts
 

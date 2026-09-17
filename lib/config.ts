@@ -1,5 +1,9 @@
 export const APP_NAME = "Toastwise";
 
+// Must match a domain verified in Resend before real sending works —
+// see the README's Resend setup section.
+export const EMAIL_FROM = "Toastwise <hello@toastwise.app>";
+
 export const PRICING = {
   standard: {
     label: "Standard",
