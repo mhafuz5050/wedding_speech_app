@@ -128,6 +128,42 @@ Setup:
    curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/follow-up-emails
    ```
 
+## Legal pages, analytics, SEO (Milestone 8)
+
+`/privacy`, `/terms`, and `/refunds` are templates — every
+`[OWNER TO COMPLETE]` marker (business name, address, ICO number,
+contact emails, governing law, etc.) needs filling in, and the wording
+should be checked by someone qualified before this goes live. This
+matches the Milestone 9 launch checklist in `BUILD_PLAN.md`.
+
+Analytics setup:
+
+1. Add to `.env.local`:
+   ```
+   NEXT_PUBLIC_POSTHOG_KEY=
+   NEXT_PUBLIC_POSTHOG_HOST=
+   ```
+   `NEXT_PUBLIC_POSTHOG_HOST` isn't in `CLAUDE.md`'s env var list —
+   PostHog needs a region host alongside the key. Leave it blank to
+   default to `https://us.i.posthog.com`, or set it explicitly for an
+   EU-hosted project.
+2. The cookie banner on first visit gates the *client-side* PostHog
+   script specifically (that's what sets a browser cookie); several
+   events are captured server-side instead, right where the server
+   already knows the fact being tracked (`email_captured` and
+   `speech_generated` in `/api/generate`, `checkout_started` in
+   `/api/checkout`, `payment_completed` in the Stripe webhook,
+   `pdf_downloaded` in the PDF/cue-card routes, `revision_used` in the
+   AI rewrite route) — those aren't gated by the banner, since they set
+   no browser cookie.
+3. Do a full test purchase and check all 10 events from `CLAUDE.md` §11
+   appear in your PostHog project's activity feed.
+
+SEO: `/speeches/[slug]` has 4 static guide pages (one per speech type),
+a sitemap at `/sitemap.xml`, `/robots.txt`, and Open Graph images
+(`/opengraph-image`, plus a per-guide one) generated with `next/og` —
+no image assets to keep in sync, they're just React components.
+
 ## Scripts
 
 - `npm run dev` — start the dev server

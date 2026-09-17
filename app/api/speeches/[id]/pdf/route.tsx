@@ -6,6 +6,7 @@ import { speechSectionSchema } from "@/lib/ai/generateSpeech";
 import { questionnaireSchema } from "@/lib/schemas/questionnaire";
 import { getSpeechType } from "@/lib/speechTypes";
 import { SpeechDocument } from "@/lib/pdf/SpeechDocument";
+import { captureServerEvent } from "@/lib/posthog/server";
 
 const sectionsSchema = z.array(speechSectionSchema);
 
@@ -18,7 +19,7 @@ export async function GET(
 
   const { data: speech } = await admin
     .from("speeches")
-    .select("speech_type, answers, sections, status")
+    .select("user_id, speech_type, answers, sections, status")
     .eq("id", id)
     .maybeSingle();
 
@@ -43,6 +44,11 @@ export async function GET(
       sections={sections}
     />,
   );
+
+  await captureServerEvent(speech.user_id, "pdf_downloaded", {
+    speechId: id,
+    type: "full",
+  });
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

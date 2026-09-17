@@ -7,6 +7,7 @@ import { checkUsageLimit, recordUsage, hashIp } from "@/lib/usageLimits";
 import { generateSpeech } from "@/lib/ai/generateSpeech";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { joinSections } from "@/lib/speechContent";
+import { captureServerEvent } from "@/lib/posthog/server";
 
 const requestSchema = z.object({
   speechType: z.string(),
@@ -49,6 +50,8 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
+
+  await captureServerEvent(userId, "email_captured", { speechType: speechTypeSlug });
 
   const usage = await checkUsageLimit({ userId, ipHash });
   if (!usage.allowed) {
@@ -102,6 +105,11 @@ export async function POST(request: NextRequest) {
   });
 
   await recordUsage({ userId, ipHash });
+
+  await captureServerEvent(userId, "speech_generated", {
+    speechId: speech.id,
+    speechType: speechTypeSlug,
+  });
 
   return NextResponse.json({ speechId: speech.id, sections: result.sections });
 }

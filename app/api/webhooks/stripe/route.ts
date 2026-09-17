@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { createStripeClient } from "@/lib/stripe/client";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendReceiptEmail } from "@/lib/emails/sendReceiptEmail";
+import { captureServerEvent } from "@/lib/posthog/server";
 
 export async function POST(request: NextRequest) {
   const signature = request.headers.get("stripe-signature");
@@ -81,6 +82,13 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   await sendReceiptEmail({
     speechId,
     userId,
+    plan,
+    amountPence: session.amount_total ?? 0,
+    currency: session.currency ?? "gbp",
+  });
+
+  await captureServerEvent(userId, "payment_completed", {
+    speechId,
     plan,
     amountPence: session.amount_total ?? 0,
     currency: session.currency ?? "gbp",

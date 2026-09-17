@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QUESTIONNAIRE_STEPS } from "./steps";
 import { QuestionStep } from "./QuestionStep";
 import { ProgressBar } from "./ProgressBar";
 import { Summary } from "./Summary";
 import { EmailCapture } from "./EmailCapture";
+import { trackEvent, identifyUser } from "@/lib/posthog/client";
 import type { QuestionnaireAnswers } from "@/lib/schemas/questionnaire";
 import type { SpeechTypeSlug } from "@/lib/speechTypes";
 
@@ -27,9 +28,20 @@ export function QuestionnaireWizard({ typeSlug, typeLabel }: QuestionnaireWizard
   const totalSteps = QUESTIONNAIRE_STEPS.length;
   const currentStep = QUESTIONNAIRE_STEPS[stepIndex];
 
+  useEffect(() => {
+    trackEvent("speech_started", { speechType: typeSlug });
+    // Fire once, when the wizard first mounts for this speech type.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function handleNext(values: Partial<QuestionnaireAnswers>) {
     const updated = { ...answers, ...values };
     setAnswers(updated);
+    trackEvent("question_completed", {
+      speechType: typeSlug,
+      stepIndex,
+      totalSteps,
+    });
     if (stepIndex + 1 < totalSteps) {
       setStepIndex((i) => i + 1);
     } else {
@@ -48,6 +60,7 @@ export function QuestionnaireWizard({ typeSlug, typeLabel }: QuestionnaireWizard
 
   async function handleEmailSubmit(email: string) {
     setStage("generating");
+    identifyUser(email);
     try {
       const response = await fetch("/api/generate", {
         method: "POST",

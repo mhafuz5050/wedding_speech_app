@@ -7,6 +7,7 @@ import { getSpeechType } from "@/lib/speechTypes";
 import { joinSections } from "@/lib/speechContent";
 import { canRevise } from "@/lib/revisionLimits";
 import { rewriteSection } from "@/lib/ai/rewriteSection";
+import { captureServerEvent } from "@/lib/posthog/server";
 
 const sectionsSchema = z.array(speechSectionSchema);
 const bodySchema = z.object({ instruction: z.string().trim().max(500).optional() });
@@ -25,7 +26,7 @@ export async function POST(
   const admin = createSupabaseAdminClient();
   const { data: speech } = await admin
     .from("speeches")
-    .select("speech_type, answers, sections, status, plan, revisions_used, paid_at")
+    .select("user_id, speech_type, answers, sections, status, plan, revisions_used, paid_at")
     .eq("id", id)
     .maybeSingle();
 
@@ -95,6 +96,13 @@ export async function POST(
     speech_id: id,
     input_tokens: result.inputTokens,
     output_tokens: result.outputTokens,
+  });
+
+  await captureServerEvent(speech.user_id, "revision_used", {
+    speechId: id,
+    sectionId,
+    plan: speech.plan,
+    revisionsUsed,
   });
 
   return NextResponse.json({

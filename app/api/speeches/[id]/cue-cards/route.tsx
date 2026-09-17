@@ -4,6 +4,7 @@ import { z } from "zod";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { speechSectionSchema } from "@/lib/ai/generateSpeech";
 import { CueCardsDocument } from "@/lib/pdf/CueCardsDocument";
+import { captureServerEvent } from "@/lib/posthog/server";
 
 const sectionsSchema = z.array(speechSectionSchema);
 
@@ -16,7 +17,7 @@ export async function GET(
 
   const { data: speech } = await admin
     .from("speeches")
-    .select("sections, status, plan")
+    .select("user_id, sections, status, plan")
     .eq("id", id)
     .maybeSingle();
 
@@ -39,6 +40,11 @@ export async function GET(
   const sections = sectionsSchema.parse(speech.sections);
 
   const buffer = await renderToBuffer(<CueCardsDocument sections={sections} />);
+
+  await captureServerEvent(speech.user_id, "pdf_downloaded", {
+    speechId: id,
+    type: "cue_cards",
+  });
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

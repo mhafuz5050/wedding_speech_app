@@ -9,6 +9,7 @@ import { canRevise } from "@/lib/revisionLimits";
 import { SpeechSectionView } from "@/components/speech/SpeechSectionView";
 import { PaywallPanel } from "@/components/speech/PaywallPanel";
 import { UnlockedSpeech } from "@/components/speech/UnlockedSpeech";
+import { TrackEvent } from "@/components/analytics/TrackEvent";
 
 const sectionsSchema = z.array(speechSectionSchema);
 const altOpeningsSchema = z.tuple([z.string(), z.string()]).nullable();
@@ -78,6 +79,7 @@ export default async function SpeechPage({
         />
       ) : (
         <>
+          <TrackEvent event="paywall_viewed" properties={{ speechId: id }} />
           <div className="flex w-full max-w-md flex-col gap-4">
             {buildPreview(sections).map((section) => (
               <SpeechSectionView

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createStripeClient } from "@/lib/stripe/client";
+import { captureServerEvent } from "@/lib/posthog/server";
 
 const checkoutRequestSchema = z.object({
   speechId: z.string().uuid(),
@@ -79,6 +80,8 @@ export async function POST(request: NextRequest) {
     if (!session.url) {
       throw new Error("Stripe did not return a checkout URL");
     }
+
+    await captureServerEvent(speech.user_id, "checkout_started", { speechId, plan });
 
     return NextResponse.redirect(session.url, 303);
   } catch (error) {
