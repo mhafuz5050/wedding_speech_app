@@ -14,7 +14,7 @@ const SECTION_IDS = [
   "toast",
 ] as const;
 
-const speechSectionSchema = z.object({
+export const speechSectionSchema = z.object({
   id: z.enum(SECTION_IDS),
   title: z.string(),
   content: z.string(),

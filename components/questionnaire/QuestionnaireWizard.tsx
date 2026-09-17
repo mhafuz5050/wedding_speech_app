@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { QUESTIONNAIRE_STEPS } from "./steps";
 import { QuestionStep } from "./QuestionStep";
 import { ProgressBar } from "./ProgressBar";
 import { Summary } from "./Summary";
 import { EmailCapture } from "./EmailCapture";
-import { GeneratedSpeech } from "./GeneratedSpeech";
 import type { QuestionnaireAnswers } from "@/lib/schemas/questionnaire";
 import type { SpeechTypeSlug } from "@/lib/speechTypes";
 
@@ -15,15 +15,13 @@ interface QuestionnaireWizardProps {
   typeLabel: string;
 }
 
-type SpeechSectionView = { id: string; title: string; content: string };
-
-type Stage = "questions" | "summary" | "email" | "generating" | "result" | "error";
+type Stage = "questions" | "summary" | "email" | "generating" | "error";
 
 export function QuestionnaireWizard({ typeSlug, typeLabel }: QuestionnaireWizardProps) {
+  const router = useRouter();
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<Partial<QuestionnaireAnswers>>({});
   const [stage, setStage] = useState<Stage>("questions");
-  const [sections, setSections] = useState<SpeechSectionView[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
 
   const totalSteps = QUESTIONNAIRE_STEPS.length;
@@ -64,19 +62,11 @@ export function QuestionnaireWizard({ typeSlug, typeLabel }: QuestionnaireWizard
         return;
       }
 
-      setSections(data.sections);
-      setStage("result");
+      router.push(`/speech/${data.speechId}`);
     } catch {
       setErrorMessage("Something went wrong. Please check your connection and try again.");
       setStage("error");
     }
-  }
-
-  function handleStartOver() {
-    setAnswers({});
-    setSections([]);
-    setStepIndex(0);
-    setStage("questions");
   }
 
   return (
@@ -116,10 +106,6 @@ export function QuestionnaireWizard({ typeSlug, typeLabel }: QuestionnaireWizard
           onBack={() => setStage("summary")}
           isSubmitting={stage === "generating"}
         />
-      )}
-
-      {stage === "result" && (
-        <GeneratedSpeech sections={sections} onStartOver={handleStartOver} />
       )}
 
       {stage === "error" && (
