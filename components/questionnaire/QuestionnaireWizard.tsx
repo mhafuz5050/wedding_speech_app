@@ -5,16 +5,26 @@ import { QUESTIONNAIRE_STEPS } from "./steps";
 import { QuestionStep } from "./QuestionStep";
 import { ProgressBar } from "./ProgressBar";
 import { Summary } from "./Summary";
+import { EmailCapture } from "./EmailCapture";
+import { GeneratedSpeech } from "./GeneratedSpeech";
 import type { QuestionnaireAnswers } from "@/lib/schemas/questionnaire";
+import type { SpeechTypeSlug } from "@/lib/speechTypes";
 
 interface QuestionnaireWizardProps {
+  typeSlug: SpeechTypeSlug;
   typeLabel: string;
 }
 
-export function QuestionnaireWizard({ typeLabel }: QuestionnaireWizardProps) {
+type SpeechSectionView = { id: string; title: string; content: string };
+
+type Stage = "questions" | "summary" | "email" | "generating" | "result" | "error";
+
+export function QuestionnaireWizard({ typeSlug, typeLabel }: QuestionnaireWizardProps) {
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<Partial<QuestionnaireAnswers>>({});
-  const [isComplete, setIsComplete] = useState(false);
+  const [stage, setStage] = useState<Stage>("questions");
+  const [sections, setSections] = useState<SpeechSectionView[]>([]);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const totalSteps = QUESTIONNAIRE_STEPS.length;
   const currentStep = QUESTIONNAIRE_STEPS[stepIndex];
@@ -25,7 +35,7 @@ export function QuestionnaireWizard({ typeLabel }: QuestionnaireWizardProps) {
     if (stepIndex + 1 < totalSteps) {
       setStepIndex((i) => i + 1);
     } else {
-      setIsComplete(true);
+      setStage("summary");
     }
   }
 
@@ -34,8 +44,39 @@ export function QuestionnaireWizard({ typeLabel }: QuestionnaireWizardProps) {
   }
 
   function handleEdit() {
-    setIsComplete(false);
+    setStage("questions");
     setStepIndex(0);
+  }
+
+  async function handleEmailSubmit(email: string) {
+    setStage("generating");
+    try {
+      const response = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ speechType: typeSlug, answers, email }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setErrorMessage(data.error ?? "Something went wrong. Please try again.");
+        setStage("error");
+        return;
+      }
+
+      setSections(data.sections);
+      setStage("result");
+    } catch {
+      setErrorMessage("Something went wrong. Please check your connection and try again.");
+      setStage("error");
+    }
+  }
+
+  function handleStartOver() {
+    setAnswers({});
+    setSections([]);
+    setStepIndex(0);
+    setStage("questions");
   }
 
   return (
@@ -44,16 +85,14 @@ export function QuestionnaireWizard({ typeLabel }: QuestionnaireWizardProps) {
         <p className="text-sm font-semibold uppercase tracking-wide text-rose-600">
           Writing a {typeLabel} speech
         </p>
-        {!isComplete && (
+        {stage === "questions" && (
           <div className="mt-3">
             <ProgressBar current={stepIndex + 1} total={totalSteps} />
           </div>
         )}
       </div>
 
-      {isComplete ? (
-        <Summary answers={answers} onEdit={handleEdit} />
-      ) : (
+      {stage === "questions" && (
         <QuestionStep
           key={currentStep.title}
           step={currentStep}
@@ -61,6 +100,41 @@ export function QuestionnaireWizard({ typeLabel }: QuestionnaireWizardProps) {
           onNext={handleNext}
           onBack={stepIndex > 0 ? handleBack : undefined}
         />
+      )}
+
+      {stage === "summary" && (
+        <Summary
+          answers={answers}
+          onEdit={handleEdit}
+          onContinue={() => setStage("email")}
+        />
+      )}
+
+      {(stage === "email" || stage === "generating") && (
+        <EmailCapture
+          onSubmit={handleEmailSubmit}
+          onBack={() => setStage("summary")}
+          isSubmitting={stage === "generating"}
+        />
+      )}
+
+      {stage === "result" && (
+        <GeneratedSpeech sections={sections} onStartOver={handleStartOver} />
+      )}
+
+      {stage === "error" && (
+        <div className="flex w-full max-w-md flex-col gap-4">
+          <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            {errorMessage}
+          </p>
+          <button
+            type="button"
+            onClick={() => setStage("email")}
+            className="rounded-xl bg-rose-600 px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-rose-700"
+          >
+            Try again
+          </button>
+        </div>
       )}
     </div>
   );

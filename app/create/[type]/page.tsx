@@ -16,7 +16,7 @@ export default async function CreateTypePage({
 
   return (
     <main className="flex flex-1 flex-col">
-      <QuestionnaireWizard typeLabel={speechType.label} />
+      <QuestionnaireWizard typeSlug={speechType.slug} typeLabel={speechType.label} />
     </main>
   );
 }

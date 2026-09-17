@@ -4,9 +4,10 @@ import type { QuestionnaireAnswers } from "@/lib/schemas/questionnaire";
 interface SummaryProps {
   answers: Partial<QuestionnaireAnswers>;
   onEdit: () => void;
+  onContinue: () => void;
 }
 
-export function Summary({ answers, onEdit }: SummaryProps) {
+export function Summary({ answers, onEdit, onContinue }: SummaryProps) {
   return (
     <div className="flex w-full max-w-md flex-col gap-6">
       <div>
@@ -45,13 +46,22 @@ export function Summary({ answers, onEdit }: SummaryProps) {
         })}
       </dl>
 
-      <button
-        type="button"
-        onClick={onEdit}
-        className="rounded-xl border border-zinc-300 px-5 py-3 text-base font-semibold text-zinc-700 transition-colors hover:bg-zinc-100"
-      >
-        Edit answers
-      </button>
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={onEdit}
+          className="rounded-xl border border-zinc-300 px-5 py-3 text-base font-semibold text-zinc-700 transition-colors hover:bg-zinc-100"
+        >
+          Edit answers
+        </button>
+        <button
+          type="button"
+          onClick={onContinue}
+          className="flex-1 rounded-xl bg-rose-600 px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-rose-700"
+        >
+          Get my speech
+        </button>
+      </div>
     </div>
   );
 }
