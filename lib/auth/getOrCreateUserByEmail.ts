@@ -39,7 +39,13 @@ export async function getOrCreateUserByEmail(email: string): Promise<string> {
 
 function sendMagicLinkBestEffort(email: string) {
   const supabase = createSupabaseServerClient();
-  supabase.auth.signInWithOtp({ email }).catch((err) => {
-    console.error("Failed to send magic-link email", err);
-  });
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  supabase.auth
+    .signInWithOtp({
+      email,
+      options: appUrl ? { emailRedirectTo: `${appUrl}/auth/callback` } : undefined,
+    })
+    .catch((err) => {
+      console.error("Failed to send magic-link email", err);
+    });
 }

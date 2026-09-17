@@ -5,10 +5,13 @@ import { speechSectionSchema } from "@/lib/ai/generateSpeech";
 import { questionnaireSchema } from "@/lib/schemas/questionnaire";
 import { getSpeechType } from "@/lib/speechTypes";
 import { buildPreview, totalWordCount } from "@/lib/speechPreview";
+import { canRevise } from "@/lib/revisionLimits";
 import { SpeechSectionView } from "@/components/speech/SpeechSectionView";
 import { PaywallPanel } from "@/components/speech/PaywallPanel";
+import { UnlockedSpeech } from "@/components/speech/UnlockedSpeech";
 
 const sectionsSchema = z.array(speechSectionSchema);
+const altOpeningsSchema = z.tuple([z.string(), z.string()]).nullable();
 
 const CHECKOUT_ERROR_MESSAGES: Record<string, string> = {
   invalid_request: "Something went wrong with that request. Please try again.",
@@ -29,7 +32,9 @@ export default async function SpeechPage({
 
   const { data: speech } = await admin
     .from("speeches")
-    .select("speech_type, answers, sections, status")
+    .select(
+      "speech_type, answers, sections, status, plan, revisions_used, paid_at, alt_openings, delivery_notes",
+    )
     .eq("id", id)
     .maybeSingle();
 
@@ -41,13 +46,6 @@ export default async function SpeechPage({
   const answers = questionnaireSchema.parse(speech.answers);
   const speechType = getSpeechType(speech.speech_type);
   const isPaid = speech.status === "paid";
-
-  // Only status === "paid" (set exclusively by the verified Stripe webhook
-  // in a later milestone) ever sees the full text — CLAUDE.md §7.
-  const viewSections = isPaid
-    ? sections.map((section) => ({ ...section, revealed: true as const }))
-    : buildPreview(sections);
-
   const minutes = Math.round(totalWordCount(sections) / 130);
 
   return (
@@ -64,27 +62,45 @@ export default async function SpeechPage({
         </p>
       </div>
 
-      <div className="flex w-full max-w-md flex-col gap-4">
-        {viewSections.map((section) => (
-          <SpeechSectionView
-            key={section.id}
-            title={section.title}
-            content={section.content}
-            revealed={section.revealed}
-          />
-        ))}
-      </div>
+      {isPaid ? (
+        <UnlockedSpeech
+          speechId={id}
+          plan={speech.plan === "premium" ? "premium" : "standard"}
+          initialSections={sections}
+          initialRevisionsUsed={speech.revisions_used}
+          revisionCheck={canRevise({
+            plan: speech.plan,
+            revisions_used: speech.revisions_used,
+            paid_at: speech.paid_at,
+          })}
+          initialAltOpenings={altOpeningsSchema.parse(speech.alt_openings)}
+          initialDeliveryNotes={speech.delivery_notes}
+        />
+      ) : (
+        <>
+          <div className="flex w-full max-w-md flex-col gap-4">
+            {buildPreview(sections).map((section) => (
+              <SpeechSectionView
+                key={section.id}
+                title={section.title}
+                content={section.content}
+                revealed={section.revealed}
+              />
+            ))}
+          </div>
 
-      {!isPaid && error && CHECKOUT_ERROR_MESSAGES[error] && (
-        <p
-          role="alert"
-          className="w-full max-w-md rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
-        >
-          {CHECKOUT_ERROR_MESSAGES[error]}
-        </p>
+          {error && CHECKOUT_ERROR_MESSAGES[error] && (
+            <p
+              role="alert"
+              className="w-full max-w-md rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+            >
+              {CHECKOUT_ERROR_MESSAGES[error]}
+            </p>
+          )}
+
+          <PaywallPanel speechId={id} />
+        </>
       )}
-
-      {!isPaid && <PaywallPanel speechId={id} />}
     </main>
   );
 }

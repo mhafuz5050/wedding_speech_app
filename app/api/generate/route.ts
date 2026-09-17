@@ -6,6 +6,7 @@ import { getOrCreateUserByEmail } from "@/lib/auth/getOrCreateUserByEmail";
 import { checkUsageLimit, recordUsage, hashIp } from "@/lib/usageLimits";
 import { generateSpeech } from "@/lib/ai/generateSpeech";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { joinSections } from "@/lib/speechContent";
 
 const requestSchema = z.object({
   speechType: z.string(),
@@ -69,9 +70,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const content = result.sections
-    .map((section) => `${section.title}\n\n${section.content}`)
-    .join("\n\n");
+  const content = joinSections(result.sections);
 
   const admin = createSupabaseAdminClient();
   const { data: speech, error: insertError } = await admin

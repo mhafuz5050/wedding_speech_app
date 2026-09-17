@@ -17,8 +17,8 @@ Open [http://localhost:3000](http://localhost:3000).
 
 1. Create a free project at [supabase.com](https://supabase.com).
 2. In the SQL editor, run every file in `supabase/migrations/` in order
-   (`0001_waitlist.sql`, `0002_speeches.sql`, `0003_payments.sql`). This
-   creates the `waitlist`, `profiles`, `speeches`, `usage_limits`,
+   (`0001_waitlist.sql` through `0004_unlocked_extras.sql`). This creates
+   the `waitlist`, `profiles`, `speeches`, `usage_limits`,
    `generation_logs`, and `payments` tables, all with row level security
    enabled.
 3. In your Supabase project settings (API section), copy these into
@@ -73,6 +73,28 @@ that controls how speeches are written lives in `lib/ai/systemPrompt.ts`.
    moves on to the unlocked speech.
 5. To test the webhook without a full checkout, run
    `stripe trigger checkout.session.completed`.
+
+## Unlocked speeches + /account (Milestone 6)
+
+For paid speeches, `/speech/[id]` now shows an editable view: manual
+section edits, "rewrite this section" with AI, revision limits
+(3 total for Standard, unlimited for 30 days from `paid_at` for
+Premium), a PDF download, and — Premium only — cue cards, alternative
+openings, and delivery notes. All of this still works off the speech's
+link alone, same as every other `/speech/[id]` action.
+
+`/account` is the one page in the app that needs a real login (it has
+to know whose speeches to list). To make the magic-link sign-in
+actually work:
+
+1. In the Supabase dashboard, go to **Authentication → URL
+   Configuration** and add `http://localhost:3000/auth/callback` (and
+   later your production URL's `/auth/callback`) to the **Redirect
+   URLs** allow-list. Without this, Supabase silently ignores the
+   `emailRedirectTo` option and the link won't come back to this app.
+2. Visit `/account`, enter an email, and check that inbox for the
+   sign-in link — clicking it should land you back on `/account` with
+   your speeches listed.
 
 ## Scripts
 
